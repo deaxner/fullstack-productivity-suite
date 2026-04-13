@@ -1,0 +1,10 @@
+FROM docker:27-cli
+
+RUN apk add --no-cache \
+    bash \
+    curl \
+    git \
+    jq \
+    openssh-client
+
+WORKDIR /workspace

@@ -1,0 +1,150 @@
+services:
+  symfony-task-api-db:
+    image: mysql:8.0
+    container_name: symfony-task-api-db
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: ${TASK_API_MYSQL_DATABASE:-task_api}
+      MYSQL_ROOT_PASSWORD: ${TASK_API_MYSQL_ROOT_PASSWORD:-root_password}
+      MYSQL_USER: ${TASK_API_MYSQL_USER:-app}
+      MYSQL_PASSWORD: ${TASK_API_MYSQL_PASSWORD:-app_password}
+    ports:
+      - "${TASK_API_DB_PORT:-3307}:3306"
+    volumes:
+      - task_api_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${TASK_API_MYSQL_ROOT_PASSWORD:-root_password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - portfolio_suite_network
+
+  symfony-task-api-app:
+    build:
+      context: ../symfony-task-api-service
+      dockerfile: Dockerfile
+    container_name: symfony-task-api-app
+    depends_on:
+      symfony-task-api-db:
+        condition: service_healthy
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: 1
+      APP_SECRET: ${TASK_API_APP_SECRET:-da73158bb161275db57678792b73dad6}
+      DATABASE_URL: mysql://${TASK_API_MYSQL_USER:-app}:${TASK_API_MYSQL_PASSWORD:-app_password}@symfony-task-api-db:3306/${TASK_API_MYSQL_DATABASE:-task_api}?serverVersion=8.0.32&charset=utf8mb4
+      JWT_SECRET_KEY: /var/www/html/config/jwt/private.pem
+      JWT_PUBLIC_KEY: /var/www/html/config/jwt/public.pem
+      JWT_PASSPHRASE: ${TASK_API_JWT_PASSPHRASE:-8165890c3fc2804942b0088cce0987161e7176c42f5d73d656fde25c4b4bc546}
+      FRONTEND_ORIGIN: ${TASK_API_FRONTEND_ORIGIN:-http://localhost:3000,http://localhost:5173,http://localhost:8080}
+      LOCK_DSN: flock
+      AUTO_MIGRATE: ${TASK_API_AUTO_MIGRATE:-1}
+      AUTO_SEED_DEMO: ${TASK_API_AUTO_SEED_DEMO:-1}
+    ports:
+      - "${TASK_API_APP_PORT:-8002}:80"
+    volumes:
+      - ../symfony-task-api-service:/var/www/html
+      - task_api_symfony_vendor:/var/www/html/vendor
+      - task_api_symfony_var:/var/www/html/var
+    networks:
+      - portfolio_suite_network
+
+  react-analytics-dashboard-app:
+    build:
+      context: ../react-analytics-dashboard
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api
+    container_name: react-analytics-dashboard-app
+    depends_on:
+      - symfony-task-api-app
+    ports:
+      - "${DASHBOARD_PORT:-3000}:80"
+    networks:
+      - portfolio_suite_network
+
+  symfony-client-invoice-saas-database:
+    image: mysql:8.0
+    container_name: symfony-client-invoice-saas-database-1
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: ${SAAS_MYSQL_DATABASE:-client_invoice_saas}
+      MYSQL_ROOT_PASSWORD: ${SAAS_MYSQL_ROOT_PASSWORD:-root_password}
+      MYSQL_USER: ${SAAS_MYSQL_USER:-app}
+      MYSQL_PASSWORD: ${SAAS_MYSQL_PASSWORD:-ChangeMe123!}
+    ports:
+      - "${SAAS_DB_PORT:-3308}:3306"
+    volumes:
+      - saas_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${SAAS_MYSQL_ROOT_PASSWORD:-root_password}"]
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - portfolio_suite_network
+
+  symfony-client-invoice-saas-app:
+    build:
+      context: ../symfony-client-invoice-saas
+      dockerfile: Dockerfile
+    container_name: symfony-client-invoice-saas-app
+    depends_on:
+      symfony-client-invoice-saas-database:
+        condition: service_healthy
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: 1
+      APP_SECRET: ${SAAS_APP_SECRET:-6f1d1d26c2a44e8abcf30d14d5f30fc2}
+      DATABASE_URL: mysql://${SAAS_MYSQL_USER:-app}:${SAAS_MYSQL_PASSWORD:-ChangeMe123!}@symfony-client-invoice-saas-database:3306/${SAAS_MYSQL_DATABASE:-client_invoice_saas}?serverVersion=8.0.32&charset=utf8mb4
+      XDEBUG_MODE: off
+      AUTO_MIGRATE: ${SAAS_AUTO_MIGRATE:-1}
+      AUTO_SEED_DEMO: ${SAAS_AUTO_SEED_DEMO:-1}
+    ports:
+      - "${SAAS_APP_PORT:-8085}:80"
+    volumes:
+      - ../symfony-client-invoice-saas:/var/www/html
+      - saas_symfony_vendor:/var/www/html/vendor
+      - saas_symfony_var:/var/www/html/var
+    networks:
+      - portfolio_suite_network
+
+  flutter-task-manager-web:
+    profiles: ["flutter"]
+    build:
+      context: ../flutter-task-manager-app
+      dockerfile: Dockerfile
+      args:
+        API_BASE_URL: ${FLUTTER_API_BASE_URL:-http://localhost:8002/api}
+    container_name: flutter-task-manager-web
+    ports:
+      - "${FLUTTER_WEB_PORT:-8080}:80"
+    networks:
+      - portfolio_suite_network
+
+  workspace-tools:
+    profiles: ["tools"]
+    build:
+      context: .
+      dockerfile: Dockerfile.tools
+    container_name: fullstack-workspace-tools
+    working_dir: /workspace
+    volumes:
+      - ..:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    entrypoint: ["sleep", "infinity"]
+    networks:
+      - portfolio_suite_network
+
+volumes:
+  task_api_mysql_data:
+  task_api_symfony_vendor:
+  task_api_symfony_var:
+  saas_mysql_data:
+  saas_symfony_vendor:
+  saas_symfony_var:
+
+networks:
+  portfolio_suite_network:
+    name: portfolio_suite_network
