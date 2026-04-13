@@ -59,6 +59,7 @@ services:
     container_name: react-analytics-dashboard-app
     depends_on:
       - symfony-task-api-app
+      - symfony-client-invoice-saas-app
     ports:
       - "${DASHBOARD_PORT:-3000}:80"
     networks:

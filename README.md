@@ -50,8 +50,8 @@ https://github.com/deaxner/flutter-task-manager-app
 - The React dashboard runs in Docker behind nginx and proxies `/api` to the Symfony API container.
 - The Symfony client and invoice SaaS app runs fully in Docker with its own MySQL container.
 - The Flutter task manager web preview is available as an optional Compose profile.
-- The API includes a demo seed command that creates 2 users and 100 tasks.
-- The SaaS app includes a demo seed command that creates 2 users, 6 clients, and 24 invoices.
+- The API includes a demo seed command that creates 2 users, 6 projects, 587 tasks, and 1104 time entries across four years.
+- The SaaS app includes a demo seed command that creates 2 users, 6 clients, 6 projects, and 256 invoices across four years.
 - The dashboard has been verified against the live seeded API dataset.
 - The Symfony client and invoice SaaS app has been verified with live Dockerized register, login, dashboard, and invoice form flows.
 - The suite stack now auto-runs Symfony migrations on startup and auto-seeds demo data for both Symfony apps by default.
@@ -60,8 +60,6 @@ Demo credentials:
 
 - `alex@example.com / Password123`
 - `jamie@example.com / Password123`
-- `owner@example.com / Password123`
-- `finance@example.com / Password123`
 
 ---
 
